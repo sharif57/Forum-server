@@ -27,6 +27,45 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+
+
+    const postCollection = client.db('forum').collection('post')
+
+    app.get('/post', async (req, res) => {
+      const cursor = postCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+    app.post('/post', async (req, res) => {
+      const newUsers = req.body;
+      console.log(newUsers)
+      const result = await postCollection.insertOne(newUsers)
+      res.send(result)
+    })
+
+    // app.get('/post', async(req, res)=>{
+    //   console.log(req.query.authorEmail);
+    //   if(req.query?.authorEmail){
+    //     query ={authorEmail: req.query.authorEmail}
+    //   }
+    //   const result = await postCollection.find(query).toArray()
+    //   res.send(result)
+    // })
+    app.get('/post/:email', async (req, res) => {
+      console.log(req.params.email);
+      const result = await postCollection.find({ email: req.params.email }).toArray()
+      res.send(result)
+    })
+
+    app.delete('/post/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await postCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -38,10 +77,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', (req,res)=>{
-    res.send('forum is running')
+app.get('/', (req, res) => {
+  res.send('forum is running')
 })
 
-app.listen(port, ()=>{
-    console.log(`Forum server is running on port ${port}`)
+app.listen(port, () => {
+  console.log(`Forum server is running on port ${port}`)
 })
