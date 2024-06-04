@@ -60,18 +60,24 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/comment/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await commentCollection.findOne(query);
-      res.send(result)
-    })
+    // app.get('/comment/:id', async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: new ObjectId(id) }
+    //   const result = await commentCollection.findOne(query);
+    //   res.send(result)
+    // })
 
     // app.get('/comment', async (req, res) => {
     //   const cursor = commentCollection.find()
     //   const result = await cursor.toArray()
     //   res.send(result)
     // })
+
+    app.get('/comment/:email', async (req, res) => {
+      console.log(req.params.email);
+      const result = await commentCollection.find({ email: req.params.email }).toArray()
+      res.send(result)
+    })
 
 
     //user related api
@@ -86,8 +92,14 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/users', async (req, res) => {
+      const cursor = userCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
 
 
+// post relate data
     app.get('/post', async (req, res) => {
       const cursor = postCollection.find()
       const result = await cursor.toArray()
