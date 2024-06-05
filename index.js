@@ -36,6 +36,18 @@ async function run() {
     const announcementCollection = client.db('forum').collection('announcement')
 
 
+    // admin related
+    app.patch('/users/admin/:id' ,async(req,res)=>{
+      const id =req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc ={
+        $set:{
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter, updateDoc)
+      res.send(result)
+    })
 
 
     //announcement related
@@ -60,12 +72,12 @@ async function run() {
       res.send(result)
     })
 
-    // app.get('/comment/:id', async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) }
-    //   const result = await commentCollection.findOne(query);
-    //   res.send(result)
-    // })
+    app.get('/comments/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { postId : id }
+      const result = await commentCollection.find(query).toArray();
+      res.send(result)
+    })
 
     // app.get('/comment', async (req, res) => {
     //   const cursor = commentCollection.find()
