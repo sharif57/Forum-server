@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express();
@@ -34,14 +35,23 @@ async function run() {
     const userCollection = client.db('forum').collection('users')
     const commentCollection = client.db('forum').collection('comment')
     const announcementCollection = client.db('forum').collection('announcement')
+    const reportedCollection = client.db('forum').collection('reported')
 
+
+    //jwt related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+      res.send({ token })
+    })
 
     // admin related
-    app.patch('/users/admin/:id' ,async(req,res)=>{
-      const id =req.params.id;
-      const filter = {_id: new ObjectId(id)}
-      const updateDoc ={
-        $set:{
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: {
           role: 'admin'
         }
       }
@@ -50,6 +60,28 @@ async function run() {
     })
 
 
+
+    // Reported related 
+    app.post('/reported', async (req, res) => {
+      const ReportPost = req.body;
+      console.log(ReportPost)
+      const result = await reportedCollection.insertOne(ReportPost)
+      res.send(result)
+    })
+
+    app.get('/reported', async (req, res) => {
+      const cursor = reportedCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+
+    app.delete('/reported/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await reportedCollection.deleteOne(query)
+      res.send(result)
+    })
+
     //announcement related
     app.post('/announcement', async (req, res) => {
       const newPost = req.body;
@@ -57,6 +89,7 @@ async function run() {
       const result = await announcementCollection.insertOne(newPost)
       res.send(result)
     })
+
     app.get('/announcement', async (req, res) => {
       const cursor = announcementCollection.find()
       const result = await cursor.toArray()
@@ -74,22 +107,52 @@ async function run() {
 
     app.get('/comments/:id', async (req, res) => {
       const id = req.params.id;
-      const query = { postId : id }
+      const query = { postId: id }
       const result = await commentCollection.find(query).toArray();
       res.send(result)
     })
 
-    // app.get('/comment', async (req, res) => {
-    //   const cursor = commentCollection.find()
-    //   const result = await cursor.toArray()
-    //   res.send(result)
-    // })
+    app.get('/comment', async (req, res) => {
+      const cursor = commentCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
 
     app.get('/comment/:email', async (req, res) => {
       console.log(req.params.email);
       const result = await commentCollection.find({ email: req.params.email }).toArray()
       res.send(result)
     })
+
+    //middlewares
+    const verifyToken = (req, res, next) => {
+      console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'forbidden access' })
+      }
+      const token = req.headers.authorization.split(' ')[1]
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        console.log(decoded);
+        if (err) {
+          return res.status(401).send({ message: 'forbidden access' })
+        }
+        req.decoded = decoded;
+        next()
+      })
+
+    }
+
+    //use verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await userCollection.findOne(query)
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next()
+    }
 
 
     //user related api
@@ -104,14 +167,29 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken,verifyAdmin, async (req, res) => {
       const cursor = userCollection.find()
       const result = await cursor.toArray()
       res.send(result)
     })
 
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'unauthorized access' })
+      }
 
-// post relate data
+      const query = { email: email }
+      const user = await userCollection.findOne(query)
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin'
+      }
+      res.send({ admin })
+    })
+
+
+    // post relate data
     app.get('/post', async (req, res) => {
       const cursor = postCollection.find()
       const result = await cursor.toArray()
