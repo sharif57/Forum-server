@@ -3,6 +3,7 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -37,6 +38,46 @@ async function run() {
     const announcementCollection = client.db('forum').collection('announcement')
     const reportedCollection = client.db('forum').collection('reported')
 
+
+
+    // payment intent 
+    // app.post('/create-payment-intent', async (req, res) => {
+    //   const { price } = req.body;
+    //   const amount = parseInt(price * 100);
+    //   console.log(amount, 'amount inside the intent');
+
+    //   const paymentIntent = await stripe.paymentIntents.create({
+    //     amount: amount,
+    //     currency: 'usd',
+    //     payment_method: ['card']
+    //   })
+
+    //   res.send({
+    //     clientSecret: paymentIntent.client_secret
+    //   })
+    // })
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, 'this amount');
+
+      const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card']
+      })
+      res.send({
+          clientSecret: paymentIntent.client_secret
+      })
+  })
+
+  app.post('/users', async(req,res)=>{
+    const payment = req.body;
+    const paymentsResult = await userCollection.insertOne(payment)
+    console.log('payment info' ,payment);
+    res.send(paymentsResult)
+
+  })
 
     //jwt related api
     app.post('/jwt', async (req, res) => {
@@ -167,7 +208,7 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users', verifyToken,verifyAdmin, async (req, res) => {
+    app.get('/users',  async (req, res) => {
       const cursor = userCollection.find()
       const result = await cursor.toArray()
       res.send(result)
