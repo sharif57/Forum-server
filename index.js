@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
 
 
@@ -41,43 +41,29 @@ async function run() {
 
 
     // payment intent 
-    // app.post('/create-payment-intent', async (req, res) => {
-    //   const { price } = req.body;
-    //   const amount = parseInt(price * 100);
-    //   console.log(amount, 'amount inside the intent');
-
-    //   const paymentIntent = await stripe.paymentIntents.create({
-    //     amount: amount,
-    //     currency: 'usd',
-    //     payment_method: ['card']
-    //   })
-
-    //   res.send({
-    //     clientSecret: paymentIntent.client_secret
-    //   })
-    // })
+   
     app.post('/create-payment-intent', async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       console.log(amount, 'this amount');
 
       const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount,
-          currency: 'usd',
-          payment_method_types: ['card']
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
       })
       res.send({
-          clientSecret: paymentIntent.client_secret
+        clientSecret: paymentIntent.client_secret
       })
-  })
+    })
 
-  app.post('/users', async(req,res)=>{
-    const payment = req.body;
-    const paymentsResult = await userCollection.insertOne(payment)
-    console.log('payment info' ,payment);
-    res.send(paymentsResult)
+    app.post('/users', async (req, res) => {
+      const payment = req.body;
+      const paymentsResult = await userCollection.insertOne(payment)
+      console.log('payment info', payment);
+      res.send(paymentsResult)
 
-  })
+    })
 
     //jwt related api
     app.post('/jwt', async (req, res) => {
@@ -196,6 +182,49 @@ async function run() {
     }
 
 
+    // update post items
+
+    app.patch('/post/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          upVote: item.upVote,
+          downVote: item.downVote
+        }
+      };
+      const result = await postCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+
+
+    // 
+    // app.post('/post', async (req, res) => {
+    //   const { body } = req;
+    //   const user = await userCollection.findOne({ email: body.email })
+
+    //   if (user.badge == 'golden') {
+    //     const result = postCollection.insertOne(body)
+    //     return res.send(result)
+    //   }
+    //   else{
+    //     const userPosts =await userCollection.find({email: body.email}).toArray()
+
+    //     if(userPosts.length >= 5){
+    //       return  res.send({error: 'max post reached', status: 402})
+    //     }
+    //     else{
+    //       const result = await postCollection.insertOne(body)
+    //       return res.send(result)
+    //     }
+    //   }
+    // })
+
+    
+
+
     //user related api
     app.post('/users', async (req, res) => {
       const user = req.body;
@@ -208,7 +237,7 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users',  async (req, res) => {
+    app.get('/users', async (req, res) => {
       const cursor = userCollection.find()
       const result = await cursor.toArray()
       res.send(result)
